@@ -51,5 +51,6 @@ Thumbs.db
 *.log
 logs/
 
-
 updated_saved_bert_model/
+
+deploy.py

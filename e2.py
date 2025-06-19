@@ -24,9 +24,12 @@ ids_to_labels = {
     12: 'B-Size'
     }
 
-model = BertForTokenClassification.from_pretrained('./updated_saved_bert_model')
-tokenizer = BertTokenizer.from_pretrained('./updated_saved_bert_model')
-model.eval()
+try:
+    model = BertForTokenClassification.from_pretrained('Ansh0205/EmailScraping')
+    tokenizer = BertTokenizer.from_pretrained('Ansh0205/EmailScraping')
+    model.eval()
+except Exception as e:
+    print(f"Error in loading")
 
 def predict_text(sentence):
     inputs = tokenizer(sentence, padding='max_length', truncation=True, max_length=128, return_tensors="pt")
