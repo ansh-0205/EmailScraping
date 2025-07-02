@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  email-scraper:
+    build: .
+    container_name: email-scraping-service
+    restart: unless-stopped
+    environment:
+      - HUGGINGFACE_MODEL_NAME=Ansh0205/EmailScraping
+    volumes:
+      - ./logs:/app/logs
+      - ./output:/app/output
+    networks:
+      - email-scraper-network
+
+networks:
+  email-scraper-network:
+    driver: bridge

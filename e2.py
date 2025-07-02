@@ -98,16 +98,11 @@ def predict_text(sentence):
             elif word_level_predictions[i] == 'B-Size':
                 size += str_rep.split()[i]+" " 
             
-            
-
-            
-    
     return mot, cs, podid, polid, wt, wt_unit, quantity, package, cargo_type, size
 
 
 
 def save_dataframe_to_json(dataframe, email_user, mode='append'):
-    email_name = email_user.split('@')[0]
     filename = f"email_data.json"
     
     if mode == 'clear':
@@ -155,7 +150,7 @@ class EmailAccountProcessor:
         self.seen_uids = set()
         self.last_seen_uid = 0
         self.last_cycle_time = datetime.now()
-        self.cycle_interval = timedelta(minutes=2)
+        self.cycle_interval = timedelta(minutes=5)
         
     def check_for_cycle_reset(self):
         current_time = datetime.now()
@@ -257,7 +252,7 @@ class EmailAccountProcessor:
 
 def main():
     print("Starting continuous email processing for multiple accounts...")
-    print("Checking emails every 5 seconds, 10-minute cycles for each account")
+    print("Checking emails every 2 seconds, 5-minute cycles for each account")
     
     processors = [EmailAccountProcessor(account) for account in email_accounts]
     
