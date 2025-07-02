@@ -235,8 +235,17 @@ class EmailAccountProcessor:
                                      'Cargo Type': cargo_type,
                                      'Size': size
                                      }]
-                        
-                        df = pd.concat([df, pd.DataFrame(new_data)], ignore_index=True)
+                        if new_data and len(new_data) > 0:
+                            new_df = pd.DataFrame(new_data)
+                            if not new_df.empty:
+                                if df.empty:
+                                    df = new_df.copy()
+                                else:
+                                    df = pd.concat([df, new_df], ignore_index=True)
+                            else:
+                                print("Warning: new_df is empty, skipping concatenation")
+                        else:
+                            print("Warning: no new_data to process")
                         self.seen_uids.add(msg.uid)
                         mailbox.delete(msg.uid)
                 
