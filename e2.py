@@ -13,12 +13,16 @@ from config import email_accounts
 def setup_logging():
     if os.path.exists('/app'):
         log_dir = '/app/logs'
-        json_path = '/app/email_data.json'
     else:
         log_dir = './logs'
-        json_path = './email_data.json'
+    
+    json_path = './email_data.json'
     
     os.makedirs(log_dir, exist_ok=True)
+    
+    if not os.path.exists(json_path):
+        with open(json_path, 'w') as f:
+            json.dump([], f, indent=2)
     
     handlers = [logging.StreamHandler(sys.stdout)]
     
@@ -142,9 +146,9 @@ def save_dataframe_to_json(dataframe, email_user, mode='append'):
     
     try:
         if mode == 'clear':
-            if os.path.exists(filename):
-                os.remove(filename)
-            logger.info(f"Cleared JSON file for {email_user}")
+            with open(filename, 'w') as f:
+                json.dump([], f, indent=2)
+            logger.info(f"CLEARED JSON file for {email_user} - File reset to empty array")
             return
         
         if dataframe.empty:
@@ -155,8 +159,13 @@ def save_dataframe_to_json(dataframe, email_user, mode='append'):
         if os.path.exists(filename):
             try:
                 with open(filename, 'r') as f:
-                    existing_data = json.load(f)
+                    content = f.read().strip()
+                    if content:
+                        existing_data = json.loads(content)
+                    else:
+                        existing_data = []
             except (json.JSONDecodeError, FileNotFoundError):
+                logger.warning(f"JSON file corrupted or not found, starting fresh")
                 existing_data = []
         
         new_records = dataframe.to_dict('records')
@@ -169,15 +178,22 @@ def save_dataframe_to_json(dataframe, email_user, mode='append'):
         
         all_data = existing_data + new_records
         
+        # Ensure directory exists
         os.makedirs(os.path.dirname(filename), exist_ok=True)
         
         with open(filename, 'w') as f:
             json.dump(all_data, f, indent=2, default=str)
         
-        logger.info(f"Appended {len(new_records)} emails to {filename} (Total: {len(all_data)} emails)")
+        logger.info(f"APPENDED {len(new_records)} emails to {filename} (Total: {len(all_data)} emails)")
         
     except Exception as e:
-        logger.error(f"Error saving dataframe to JSON: {str(e)}")
+        logger.error(f"ERROR saving dataframe to JSON: {str(e)}")
+        try:
+            with open(filename, 'w') as f:
+                json.dump([], f, indent=2)
+            logger.info(f"Created fresh JSON file after error")
+        except Exception as e2:
+            logger.error(f"Failed to create fresh JSON file: {str(e2)}")
 
 class EmailAccountProcessor:
     def __init__(self, account_config):
@@ -200,8 +216,8 @@ class EmailAccountProcessor:
     def check_for_cycle_reset(self):
         current_time = datetime.now()
         if current_time - self.last_cycle_time >= self.cycle_interval:
-            logger.info(f"=== 5-minute cycle completed for {self.user} ===")
-            logger.info(f"Clearing JSON and starting fresh cycle at {current_time}")
+            logger.info(f"5-MINUTE CYCLE COMPLETED for {self.user}")
+            logger.info(f"CLEARING JSON and starting fresh cycle at {current_time}")
             
             save_dataframe_to_json(pd.DataFrame(), self.user, mode='clear')
             
@@ -209,12 +225,16 @@ class EmailAccountProcessor:
             self.last_seen_uid = 0
             self.last_cycle_time = current_time
             
+            logger.info(f"Fresh cycle started for {self.user}")
             return True
+        else:
+            time_remaining = self.cycle_interval - (current_time - self.last_cycle_time)
+            logger.info(f"Next cycle reset for {self.user} in: {str(time_remaining).split('.')[0]}")
         return False
     
     def process_emails(self):
         try:
-            self.check_for_cycle_reset()
+            cycle_reset = self.check_for_cycle_reset()
             
             df = pd.DataFrame(columns=['companyId', 'companyBranchId', 'financialYearId', 'clientId', 'id', 'Sender', 'Subject', 'Date', 'Remarks', 'Mode_Of_Transport',
                                        'Port_Of_Loading', 'Port_Of_Destination', 'Container_status', 'Weight', 'Weight_unit', 'Quantity', 'Package Type', 'Cargo Type', 'Size'])
@@ -233,7 +253,7 @@ class EmailAccountProcessor:
                         emailFrom = msg.from_ or ""
                         enquiryDate = msg.date
                         
-                        logger.info(f"=== NEW EMAIL for {self.user} ===")
+                        logger.info(f"NEW EMAIL for {self.user}")
                         logger.info(f"SENDER : {emailFrom}")
                         logger.info(f"SUBJECT: {emailSubject}")
                         logger.info(f"DATE : {enquiryDate}")
@@ -285,24 +305,24 @@ class EmailAccountProcessor:
                 
                 if not df.empty:
                     save_dataframe_to_json(df, self.user, mode='append')
-                elif not new_emails_found:
+                elif not new_emails_found and not cycle_reset:
                     current_time = datetime.now()
                     time_remaining = self.cycle_interval - (current_time - self.last_cycle_time)
-                    logger.info(f"No new emails for {self.user} (Next cycle in {time_remaining})")
+                    logger.info(f"No new emails for {self.user} (Next cycle in {str(time_remaining).split('.')[0]})")
                 
         except Exception as e:
             logger.error(f"Error processing {self.user}: {str(e)}")
 
 def main():
-    logger.info("Starting continuous email processing for multiple accounts...")
-    logger.info("Checking emails every 2 seconds, 5-minute cycles for each account")
+    logger.info("🚀 Starting continuous email processing for multiple accounts...")
+    logger.info("📧 Checking emails every 2 seconds, 5-minute cycles for each account")
     
     try:
         processors = [EmailAccountProcessor(account) for account in email_accounts]
         logger.info(f"Initialized {len(processors)} email processors")
         
         while True:
-            logger.info(f"--- Checking all accounts at {datetime.now()} ---")
+            logger.info(f"Checking all accounts at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             for processor in processors:
                 try:
@@ -315,7 +335,7 @@ def main():
     except KeyboardInterrupt:
         logger.info("Shutting down email processing...")
     except Exception as e:
-        logger.error(f"Fatal error in main loop: {str(e)}")
+        logger.error(f"error in main loop: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":

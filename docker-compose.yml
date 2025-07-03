@@ -14,7 +14,7 @@ services:
       - ./output:/app/output:rw
       - ./data:/app/data:rw
       - ./.env:/app/.env:ro
-      - ./email_data.json:/app/email_data.json:rw
+      - .:/app:rw
     env_file:
       - .env
     networks:
@@ -25,7 +25,7 @@ services:
         max-size: "10m"
         max-file: "3"
     healthcheck:
-      test: ["CMD", "python", "-c", "import os; exit(0 if os.path.exists('/app/email_data.json') else 1)"]
+      test: ["CMD", "python", "-c", "import os; exit(0 if os.path.exists('./email_data.json') else 1)"]
       interval: 30s
       timeout: 10s
       retries: 3
